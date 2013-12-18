@@ -10,7 +10,7 @@ EventMachine.run do
   warn "Connected to AMQP broker..."
 
   channel  = AMQP::Channel.new(connection)
-  queue    = channel.queue("", :auto_delete => true)
+  queue    = channel.queue("", auto_delete: false, durable: true)
   exchange = channel.fanout("metrics")
   queue.bind(exchange)
 
