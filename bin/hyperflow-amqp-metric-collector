@@ -19,4 +19,5 @@ EventMachine.run do
     # warn "Received a message: #{payload}"
     puts [data.executable, data.metrics.execution, data.metrics.download, data.metrics.upload].join("\t")
   end
+  Signal.trap("INT") { connection.close { EventMachine.stop } }
 end
