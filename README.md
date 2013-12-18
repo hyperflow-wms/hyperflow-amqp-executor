@@ -1,6 +1,6 @@
 # hyperflow-amqp-executor
 
-AMQP job executor for Hyperflow workflow engine ([http://github.com/dice-cyfronet/hyperflow]).
+AMQP job executor for Hyperflow workflow engine (http://github.com/dice-cyfronet/hyperflow).
 
 ## Usage
 
