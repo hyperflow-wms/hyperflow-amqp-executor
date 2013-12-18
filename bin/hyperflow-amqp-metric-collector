@@ -2,10 +2,12 @@
 # encoding: utf-8
 
 require "amqp"
+require "recursive-open-struct"
+require "json"
 
 EventMachine.run do
   connection = AMQP.connect(ENV['AMQP_URL'])
-  puts "Connected to AMQP broker..."
+  warn "Connected to AMQP broker..."
 
   channel  = AMQP::Channel.new(connection)
   queue    = channel.queue("", :auto_delete => true)
@@ -13,6 +15,8 @@ EventMachine.run do
   queue.bind(exchange)
 
   queue.subscribe do |payload|
-    puts "Received a message: #{payload}. Disconnecting..."
+    data = RecursiveOpenStruct.new(JSON.parse(payload))
+    # warn "Received a message: #{payload}"
+    puts [data.executable, data.metrics.execution, data.metrics.download, data.metrics.upload].join("\t")
   end
 end
