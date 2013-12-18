@@ -1,0 +1,129 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require "amqp"
+require 'benchmark'
+require 'json'
+require 'recursive-open-struct'
+require 'fog'
+require 'pry'
+require 'open3'
+
+def time
+  start = Time.now
+  result = yield
+  t = Time.now - start
+  [result, t]
+end
+
+thread_count = unless ENV['THREADS'].nil?
+  ENV['THREADS'].to_i
+else
+  begin
+    `nproc`
+  rescue
+    1
+  end
+end
+# export THREADS=`nproc`
+workdir = Dir.pwd
+
+EventMachine.threadpool_size = thread_count
+
+#####
+
+module S3JobStorage
+  def storage_init
+    @s3 = Fog::Storage.new({
+      provider:                 'AWS',
+      aws_access_key_id:        ENV['AWS_ACCESS_KEY_ID'],
+      aws_secret_access_key:    ENV['AWS_SECRET_ACCESS_KEY']
+    })  
+  end
+  
+  def download_files
+    @bucket = @s3.directories.get(@job.options.bucket)
+ 
+    @job.inputs.each do |file|
+      print "Downloading #{file.name}"
+      File.open(file.name, File::RDWR|File::CREAT) do |local_file|
+        @bucket.files.get(@job.options.prefix+file.name) do |chunk, remaining_bytes, total_bytes|
+          local_file.write(chunk)
+          print "\rDownloading #{file.name}: #{100*(total_bytes-remaining_bytes)/total_bytes}%"
+        end
+      end
+      puts
+    end
+  end
+  
+  def upload_files
+    @job.inputs.each do |file|
+      puts "Uploading #{file.name}"
+      @bucket.files.create(key: @job.options.prefix+file.name, body: File.open(file.name))
+    end
+  end
+
+end
+
+class Job
+  def initialize(storage_handler, job)
+    @job = job
+    self.extend(storage_handler)
+  end
+  
+  def self.run(*args)
+    Dir.mktmpdir do |tmpdir|
+      Dir.chdir(tmpdir)
+      results = {}
+      metrics = {}
+
+      j = self.new(*args)
+      j.storage_init
+    
+      _, metrics[:download]        = time { j.download_files }
+      results, metrics[:execution] = time { j.execute }
+      _, metrics[:upload]          = time { j.upload_files }
+    
+      results[:metrics] = metrics
+      results
+    end
+  end
+
+  def execute
+    begin
+      cmdline = "#{@job.executable} #{@job.args}"
+      puts "Executing #{cmdline}"
+      Open3.popen3(cmdline) do |stdin, stdout, stderr, wait_thr|  
+        {exit_code: wait_thr.value, stderr: stderr.read, stdout: stdout.read} # Should use IO.select!
+      end
+    rescue Exception => e
+      puts "Error running job: #{e}"
+      {exit_code: -1, exceptions: [e]}
+    end
+  end
+end
+
+EventMachine.run do
+  connection = AMQP.connect(ENV['AMQP_URL'])
+  puts "Connected to AMQP broker... "
+  puts "Running #{thread_count} worker threads"
+
+  channel  = AMQP::Channel.new(connection)
+  channel.prefetch(thread_count)
+  queue    = channel.queue("hyperflow.jobs", durable: true)
+
+  queue.subscribe(ack: true) do |header, payload|
+    job = RecursiveOpenStruct.new(JSON.parse(payload), recurse_over_arrays: true)
+    op = -> {
+      Job.run(S3JobStorage, job) 
+    }
+    cb = -> (output){
+      channel.default_exchange.publish(JSON.dump(output), content_type: 'application/json', routing_key: header.reply_to, correlation_id: header.correlation_id, mandatory: true)
+      channel.default_exchange.publish(JSON.dump({executable: job.executable, metrics: output[:metrics]}), content_type: 'application/json', routing_key: "metrics")
+      header.ack
+    }
+    EM.defer(op, cb)
+  end
+  
+  Signal.trap("INT") { connection.close { EventMachine.stop } }
+end

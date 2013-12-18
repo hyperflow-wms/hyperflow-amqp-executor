@@ -1,6 +1,22 @@
 = hyperflow-amqp-executor
 
-Description goes here.
+AMQP job executor for Hyperflow workflow engine (http://github.com/dice-cyfronet/hyperflow).
+
+== Usage
+
+Executor is configured via environment variables:
+
+ * AWS_ACCESS_KEY_ID
+ * AWS_SECRET_ACCESS_KEY
+ * AMQP_URL
+ * THREADS (defaults to number of cores or 1 if it couldn't be determined)
+
+
+To execute jobs:
+$ hyperflow-amqp-executor
+
+To collect metrics:
+$ hyperflow-amqp-metric-collector
 
 == Contributing to hyperflow-amqp-executor
  
@@ -14,6 +30,5 @@ Description goes here.
 
 == Copyright
 
-Copyright (c) 2013 Kamil Figiela. See LICENSE.txt for
-further details.
+Copyright (c) 2013 Kamil Figiela (kfigiela@agh.edu.pl). See LICENSE.txt for further details.
 

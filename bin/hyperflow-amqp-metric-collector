@@ -1,0 +1,17 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require "amqp"
+
+EventMachine.run do
+  connection = AMQP.connect(ENV['AMQP_URL'])
+  puts "Connected to AMQP broker..."
+
+  channel  = AMQP::Channel.new(connection)
+  queue    = channel.queue("metrics", :auto_delete => true)
+  exchange = channel.direct("")
+
+  queue.subscribe do |payload|
+    puts "Received a message: #{payload}. Disconnecting..."
+  end
+end
