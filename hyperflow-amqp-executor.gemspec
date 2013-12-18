@@ -15,15 +15,18 @@ Gem::Specification.new do |s|
   s.executables = ["hyperflow-amqp-executor", "hyperflow-amqp-metric-collector"]
   s.extra_rdoc_files = [
     "LICENSE.txt",
-    "README.rdoc"
+    "README.md"
   ]
   s.files = [
     ".document",
     "Gemfile",
+    "Gemfile.lock",
     "LICENSE.txt",
-    "README.rdoc",
     "Rakefile",
     "VERSION",
+    "bin/hyperflow-amqp-executor",
+    "bin/hyperflow-amqp-metric-collector",
+    "hyperflow-amqp-executor.gemspec",
     "lib/hyperflow-amqp-executor.rb",
     "test/helper.rb",
     "test/test_hyperflow-amqp-executor.rb"
