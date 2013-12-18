@@ -128,7 +128,12 @@ EventMachine.run do
   queue.subscribe(ack: true) do |header, payload|
     job = RecursiveOpenStruct.new(JSON.parse(payload), recurse_over_arrays: true)
     op = -> {
-      Job.new(S3JobStorage, header.correlation_id, job).run
+      begin
+        Job.new(S3JobStorage, header.correlation_id, job).run
+      rescue Exception => e
+        Executor::logger.info "[#{@id}] Error running job: #{e}"
+        {exit_code: -2, exceptions: [e]}
+      end
     }
     cb = -> (output){
       channel.default_exchange.publish(JSON.dump(output), content_type: 'application/json', routing_key: header.reply_to, correlation_id: header.correlation_id, mandatory: true)
