@@ -110,7 +110,9 @@ EventMachine.run do
 
   channel  = AMQP::Channel.new(connection)
   channel.prefetch(thread_count)
-  queue    = channel.queue("hyperflow.jobs", durable: true)
+
+  metrics_exchange = channel.fanout('metrics')  
+  queue            = channel.queue("hyperflow.jobs", durable: true)
 
   queue.subscribe(ack: true) do |header, payload|
     job = RecursiveOpenStruct.new(JSON.parse(payload), recurse_over_arrays: true)
@@ -119,7 +121,7 @@ EventMachine.run do
     }
     cb = -> (output){
       channel.default_exchange.publish(JSON.dump(output), content_type: 'application/json', routing_key: header.reply_to, correlation_id: header.correlation_id, mandatory: true)
-      channel.default_exchange.publish(JSON.dump({executable: job.executable, metrics: output[:metrics]}), content_type: 'application/json', routing_key: "metrics")
+      metrics_exchange.publish(JSON.dump({executable: job.executable, metrics: output[:metrics]}), content_type: 'application/json')
       header.ack
     }
     EM.defer(op, cb)

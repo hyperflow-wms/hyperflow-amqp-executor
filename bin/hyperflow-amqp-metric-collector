@@ -8,8 +8,9 @@ EventMachine.run do
   puts "Connected to AMQP broker..."
 
   channel  = AMQP::Channel.new(connection)
-  queue    = channel.queue("metrics", :auto_delete => true)
-  exchange = channel.direct("")
+  queue    = channel.queue("", :auto_delete => true)
+  exchange = channel.fanout("metrics")
+  queue.bind(exchange)
 
   queue.subscribe do |payload|
     puts "Received a message: #{payload}. Disconnecting..."
