@@ -6,8 +6,20 @@ require 'benchmark'
 require 'json'
 require 'recursive-open-struct'
 require 'fog'
-require 'pry'
 require 'open3'
+require 'tmpdir'
+require 'logger'
+
+module Executor
+  def self.logger
+    @logger
+  end
+  def self.logger=(logger)
+    @logger = logger
+  end
+end
+
+Executor.logger = Logger.new($stdout)
 
 def time
   start = Time.now
@@ -17,14 +29,14 @@ def time
 end
 
 thread_count = unless ENV['THREADS'].nil?
-  ENV['THREADS'].to_i
+  ENV['THREADS']
 else
   begin
     `nproc`
   rescue
     1
   end
-end
+end.to_i
 # export THREADS=`nproc`
 workdir = Dir.pwd
 
@@ -45,44 +57,43 @@ module S3JobStorage
     @bucket = @s3.directories.get(@job.options.bucket)
  
     @job.inputs.each do |file|
-      print "Downloading #{file.name}"
-      File.open(file.name, File::RDWR|File::CREAT) do |local_file|
+      Executor::logger.info "[#{@id}] Downloading #{file.name}"
+      File.open(@localdir+"/"+file.name, File::RDWR|File::CREAT) do |local_file|
         @bucket.files.get(@job.options.prefix+file.name) do |chunk, remaining_bytes, total_bytes|
           local_file.write(chunk)
-          print "\rDownloading #{file.name}: #{100*(total_bytes-remaining_bytes)/total_bytes}%"
+          # print "\rDownloading #{file.name}: #{100*(total_bytes-remaining_bytes)/total_bytes}%"
         end
       end
-      puts
     end
   end
   
   def upload_files
-    @job.inputs.each do |file|
-      puts "Uploading #{file.name}"
-      @bucket.files.create(key: @job.options.prefix+file.name, body: File.open(file.name))
+    @job.outputs.each do |file|
+      Executor::logger.info "[#{@id}] Uploading #{file.name}"
+      @bucket.files.create(key: @job.options.prefix+file.name, body: File.open(@localdir+"/"+file.name))
     end
   end
 
 end
 
 class Job
-  def initialize(storage_handler, job)
+  def initialize(storage_handler, id, job)
     @job = job
+    @id = id
     self.extend(storage_handler)
   end
   
-  def self.run(*args)
-    Dir.mktmpdir do |tmpdir|
-      Dir.chdir(tmpdir)
+  def run(*args)
+    Dir::mktmpdir do |tmpdir|
+      @localdir = tmpdir
       results = {}
       metrics = {}
 
-      j = self.new(*args)
-      j.storage_init
+      storage_init
     
-      _, metrics[:download]        = time { j.download_files }
-      results, metrics[:execution] = time { j.execute }
-      _, metrics[:upload]          = time { j.upload_files }
+      _, metrics[:download]        = time { download_files }
+      results, metrics[:execution] = time { execute }
+      _, metrics[:upload]          = time { upload_files }
     
       results[:metrics] = metrics
       results
@@ -92,12 +103,12 @@ class Job
   def execute
     begin
       cmdline = "#{@job.executable} #{@job.args}"
-      puts "Executing #{cmdline}"
-      Open3.popen3(cmdline) do |stdin, stdout, stderr, wait_thr|  
+      Executor::logger.info "[#{@id}] Executing #{cmdline}"
+      Open3.popen3(cmdline, chdir: @localdir) do |stdin, stdout, stderr, wait_thr|  
         {exit_code: wait_thr.value, stderr: stderr.read, stdout: stdout.read} # Should use IO.select!
       end
     rescue Exception => e
-      puts "Error running job: #{e}"
+      Executor::logger.info "[#{@id}] Error running job: #{e}"
       {exit_code: -1, exceptions: [e]}
     end
   end
@@ -105,8 +116,8 @@ end
 
 EventMachine.run do
   connection = AMQP.connect(ENV['AMQP_URL'])
-  puts "Connected to AMQP broker... "
-  puts "Running #{thread_count} worker threads"
+  Executor::logger.info "Connected to AMQP broker... "
+  Executor::logger.info "Running #{thread_count} worker threads"
 
   channel  = AMQP::Channel.new(connection)
   channel.prefetch(thread_count)
@@ -117,7 +128,7 @@ EventMachine.run do
   queue.subscribe(ack: true) do |header, payload|
     job = RecursiveOpenStruct.new(JSON.parse(payload), recurse_over_arrays: true)
     op = -> {
-      Job.run(S3JobStorage, job) 
+      Job.new(S3JobStorage, header.correlation_id, job).run
     }
     cb = -> (output){
       channel.default_exchange.publish(JSON.dump(output), content_type: 'application/json', routing_key: header.reply_to, correlation_id: header.correlation_id, mandatory: true)
@@ -127,5 +138,8 @@ EventMachine.run do
     EM.defer(op, cb)
   end
   
-  Signal.trap("INT") { connection.close { EventMachine.stop } }
+  Signal.trap("INT") { 
+    Executor::logger.info "Keyboard interrupt, finishing jobs."
+    connection.close { EventMachine.stop } 
+  }
 end
