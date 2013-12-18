@@ -139,7 +139,6 @@ EventMachine.run do
   end
   
   Signal.trap("INT") { 
-    Executor::logger.info "Keyboard interrupt, finishing jobs."
     connection.close { EventMachine.stop } 
   }
 end
