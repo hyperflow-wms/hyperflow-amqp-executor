@@ -91,6 +91,9 @@ GEM
     thread_safe (0.1.3)
       atomic
     tzinfo (0.3.38)
+    unf (0.1.3)
+      unf_ext
+    unf_ext (0.0.6)
 
 PLATFORMS
   ruby
@@ -104,3 +107,4 @@ DEPENDENCIES
   rdoc (~> 3.12)
   recursive-open-struct
   shoulda
+  unf
