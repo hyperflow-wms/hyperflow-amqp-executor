@@ -37,10 +37,9 @@ else
     1
   end
 end.to_i
-# export THREADS=`nproc`
-workdir = Dir.pwd
-
 EventMachine.threadpool_size = thread_count
+
+workdir = Dir.pwd
 
 #####
 
@@ -73,7 +72,6 @@ module S3JobStorage
       @bucket.files.create(key: @job.options.prefix+file.name, body: File.open(@localdir+"/"+file.name))
     end
   end
-
 end
 
 class Job
@@ -105,11 +103,11 @@ class Job
       cmdline = "#{@job.executable} #{@job.args}"
       Executor::logger.info "[#{@id}] Executing #{cmdline}"
       Open3.popen3(cmdline, chdir: @localdir) do |stdin, stdout, stderr, wait_thr|  
-        {exit_code: wait_thr.value, stderr: stderr.read, stdout: stdout.read} # Should use IO.select!
+        {exit_status: wait_thr.value.exitstatus, stderr: stderr.read, stdout: stdout.read} # Should use IO.select!
       end
     rescue Exception => e
       Executor::logger.info "[#{@id}] Error running job: #{e}"
-      {exit_code: -1, exceptions: [e]}
+      {exit_status: -1, exceptions: [e]}
     end
   end
 end
@@ -132,7 +130,7 @@ EventMachine.run do
         Job.new(S3JobStorage, header.correlation_id, job).run
       rescue Exception => e
         Executor::logger.info "[#{@id}] Error running job: #{e}"
-        {exit_code: -2, exceptions: [e]}
+        {exit_status: -2, exceptions: [e]}
       end
     }
     cb = -> (output){
