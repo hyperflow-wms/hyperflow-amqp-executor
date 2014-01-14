@@ -72,6 +72,14 @@ module S3JobStorage
       @bucket.files.create(key: @job.options.prefix+file.name, body: File.open(@localdir+"/"+file.name))
     end
   end
+  
+  def input_size
+    @job.inputs.map{ |file| File.size(@localdir+"/"+file.name) }.reduce(:+)
+  end
+
+  def output_size
+    @job.outputs.map{ |file| File.size(@localdir+"/"+file.name) }.reduce(:+)
+  end
 end
 
 class Job
@@ -90,8 +98,10 @@ class Job
       storage_init
     
       _, metrics[:download]        = time { download_files }
+      metrics[:input_size]         = input_size
       results, metrics[:execution] = time { execute }
       _, metrics[:upload]          = time { upload_files }
+      metrics[:output_size]        = output_size
     
       results[:metrics] = metrics
       results

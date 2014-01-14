@@ -17,7 +17,7 @@ EventMachine.run do
   queue.subscribe do |payload|
     data = RecursiveOpenStruct.new(JSON.parse(payload))
     # warn "Received a message: #{payload}"
-    puts [data.executable, data.metrics.execution, data.metrics.download, data.metrics.upload].join("\t")
+    puts [data.executable, data.metrics.execution, data.metrics.download, data.metrics.upload, data.metrics.input_size, data.metrics.output_size].join("\t")
   end
   Signal.trap("INT") { connection.close { EventMachine.stop } }
 end
