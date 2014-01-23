@@ -17,7 +17,7 @@ module Executor
     channel  = AMQP::Channel.new(connection)
     channel.prefetch(thread_count)
 
-    Executor::events_exchange = channel.topic('hyperflow.events')
+    Executor::events_exchange = channel.topic('hyperflow.events', durable: true)
     queue                     = channel.queue("hyperflow.jobs", durable: true)
 
     queue.subscribe(ack: true) do |header, payload|
