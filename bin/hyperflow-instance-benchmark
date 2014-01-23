@@ -1,0 +1,103 @@
+#!/usr/bin/env ruby
+# encoding: utf-8
+
+require "amqp"
+require "recursive-open-struct"
+require "fog"
+require "json"
+
+
+def time
+  start = Time.now
+  yield
+  Time.now - start
+end
+
+Fog.credential = 'kfigiela'
+
+#instance_types = ['m3.xlarge', 'm1.small']#, 'm1.small', 'm3.xlarge', 'm1.xlarge', 't1.micro'] #, 'm1.large', 'm1.medium', 'm1.small']
+#instance_types = ['m1.xlarge', 'm1.large', 'm1.medium', 'm1.small', 'c1.xlarge', 'c1.medium', 't1.micro']
+# instance_types = ['m3.xlarge', 'm3.2xlarge', 'm1.xlarge', 'm1.large', 'm1.medium', 'm1.small', 'c1.xlarge', 'c1.medium', 't1.micro']
+instance_types = ['m1.small', 'c1.xlarge', 'c1.medium', 't1.micro']
+instance_id = 'i-03f11c42'
+
+aws = Fog::Compute.new(provider: 'AWS',
+                       aws_access_key_id:  ENV['EC2_ACCESS_KEY'],
+                       aws_secret_access_key: ENV['EC2_SECRET_KEY'],
+                       endpoint: 'https://ec2.eu-west-1.amazonaws.com/',
+                       region: 'eu-west-1'
+                       )
+
+server = aws.servers.get(instance_id)
+
+EventMachine.run do
+  connection = AMQP.connect(ENV['AMQP_URL'])
+  warn "Connected to AMQP broker..."
+
+  channel          = AMQP::Channel.new(connection)
+  metrics_queue    = channel.queue("", auto_delete: false, durable: true)
+  metrics_exchange = channel.fanout("metrics")
+  logs_exchange    = channel.fanout("logs")
+  logs_queue       = channel.queue("", auto_delete: false, durable: true)
+  logs_queue.bind(logs_exchange)
+  metrics_queue.bind(metrics_exchange)
+
+  instance_operation = ->(instance_type, instance_iter) do
+    if server.flavor_id == instance_type
+      puts "Instance is already #{instance_type}, need to manually restart executor (or push instance ready manually)"
+    else
+      puts "Changing instance type to #{instance_type} and restarting"
+      server.stop
+      server.wait_for { state == 'stopped' }
+      puts "Stopped"
+      puts `ec2-modify-instance-attribute --instance-type #{instance_type} --region eu-west-1 #{instance_id}`
+      puts "Instante type changed"
+      server.start
+      puts "Instance started"
+    end
+
+    logs_queue.subscribe do |header, payload|
+      puts "Instance ready: #{payload}"
+
+      operation = ->(size, iter) do
+        log = []
+
+        metrics_queue.subscribe do |payload|
+          log << RecursiveOpenStruct.new(JSON.parse(payload))
+        end
+
+        operation = -> {
+          puts "Running hyperflow size #{size}"
+          ret = time do
+            # `echo foobar >&2; sleep 5`
+            `S3_PATH="#{size}/input/" node $HOME/hyperflow/hyperflow/scripts/runwf.js -f $HOME/hyperflow/workflows/montage.#{size}.json -s 2>&1 >> hyperflow.log`
+          end
+          Kernel.sleep(5) # ensure that metrics we will get metrics
+          ret
+        }
+
+        finished = -> (runtime) {
+          puts "Hyperflow done"
+          metrics_queue.unsubscribe
+          results =  log.map { |data| 
+              if data.metrics
+                [instance_type, size, data.executable, data.metrics.execution, data.metrics.download, data.metrics.upload, data.metrics.input_size, data.metrics.output_size].join("\t")
+              else
+                [instance_type, size, data.executable, "NA", "NA", "NA", "NA", "NA"].join("\t")
+                p data
+              end
+            }
+          File.write("#{instance_type}.#{size}.log", results.join("\n"))
+          File.write("#{instance_type}.#{size}.time", runtime.to_s)
+          iter.next
+        }
+        EM.defer operation, finished
+        logs_queue.unsubscribe
+      end
+      EM::Iterator.new(%w{0.5 1.0 2.0}).each(operation, -> { server.stop; instance_iter.next })
+    end
+  end
+
+  EM::Iterator.new(instance_types).each(instance_operation, -> { connection.close { EventMachine.stop } })
+  Signal.trap("INT") { connection.close { EventMachine.stop } }
+end

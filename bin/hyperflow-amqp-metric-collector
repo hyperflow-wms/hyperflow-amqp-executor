@@ -11,13 +11,16 @@ EventMachine.run do
 
   channel  = AMQP::Channel.new(connection)
   queue    = channel.queue("", auto_delete: false, durable: true)
-  exchange = channel.fanout("metrics")
-  queue.bind(exchange)
+  queue.bind("hyperflow.events", routing_key: "job.#")
 
   queue.subscribe do |payload|
     data = RecursiveOpenStruct.new(JSON.parse(payload))
     # warn "Received a message: #{payload}"
-    puts [data.executable, data.metrics.execution, data.metrics.download, data.metrics.upload, data.metrics.input_size, data.metrics.output_size].join("\t")
+    # if data.metrics
+    #   puts [data.executable, data.metrics.execution, data.metrics.download, data.metrics.upload, data.metrics.input_size, data.metrics.output_size].join("\t")
+    # else
+    p data
+    # end
   end
   Signal.trap("INT") { connection.close { EventMachine.stop } }
 end

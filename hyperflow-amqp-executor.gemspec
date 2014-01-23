@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.name = "hyperflow-amqp-executor"
   s.version = "0.1.0"
 
-  s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
+  s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to?? :required_rubygems_version=
   s.authors = ["Kamil Figiela"]
   s.date = "2013-12-18"
   s.description = "AMQP job executor for Hyperflow workflow engine (http://github.com/dice-cyfronet/hyperflow)"
@@ -37,7 +37,7 @@ Gem::Specification.new do |s|
   s.rubygems_version = "2.0.3"
   s.summary = "AMQP job executor for Hyperflow workflow engine"
 
-  if s.respond_to? :specification_version then
+  if s.respond_to?? :specification_version then
     s.specification_version = 4
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
