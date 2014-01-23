@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 # Add dependencies required to use your gem here.
 
-ruby "2.0.0"
+ruby "2.1.0"
 
 gem 'fog'
 gem 'unf'
