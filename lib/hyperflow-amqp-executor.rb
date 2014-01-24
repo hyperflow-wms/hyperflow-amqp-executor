@@ -10,16 +10,17 @@ require_relative 'hyperflow-amqp-executor/job'
 require_relative 'hyperflow-amqp-executor/local_storage'
 require_relative 'hyperflow-amqp-executor/cloud_storage'
 require_relative 'hyperflow-amqp-executor/nfs_storage'
+require_relative 'hyperflow-amqp-executor/settings'
 
 module Executor
   class << self
-    attr_accessor :events_exchange, :id
+    attr_accessor :events_exchange, :id, :settings
 
     def logger
       @logger ||= Logger.new($stdout)
     end
 
-    def thread_count
+    def cpu_count
       unless ENV['THREADS'].nil?
         ENV['THREADS']
       else

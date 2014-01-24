@@ -1,46 +1,48 @@
 #!/usr/bin/env ruby
 require_relative '../lib/hyperflow-amqp-executor'
 
-module Executor
-  EM.threadpool_size = thread_count
-  Executor::id = SecureRandom.uuid
-  Executor::logger.info "Starting worker #{Executor.id}"
-  Executor::logger.info "Running #{thread_count} worker threads"
+include Executor
 
-  EM.run do
-    AMQP.connect(ENV['AMQP_URL']) do |connection|
-      Executor::logger.info "Connected to AMQP broker... "
+Executor::id = SecureRandom.uuid
+Executor::logger.info "Starting worker #{Executor.id}"
 
-      channel  = AMQP::Channel.new(connection)
-      channel.prefetch(thread_count)
+Executor::settings = Executor::Settings.load(ARGV.first)
 
-      Executor::events_exchange = channel.topic('hyperflow.events', durable: true)
-      queue                     = channel.queue("hyperflow.jobs",   durable: true)
-      puts "queus init"
-      queue.subscribe(ack: true) do |header, payload|
-        puts "DUPA"
-        job_data = RecursiveOpenStruct.new(JSON.parse(payload), recurse_over_arrays: true)
-        job = Job.new(header.correlation_id, job_data)
-        op = -> {
-          begin
-            job.run
-          rescue Exception => e
-            logger.error "[#{@id}] Error running job: #{e}"
-            {exit_status: -2, exceptions: [e]}
-          end
-        }
-        cb = -> (output){
-          channel.default_exchange.publish(JSON.dump(output), content_type: 'application/json', routing_key: header.reply_to, correlation_id: header.correlation_id, mandatory: true)
-          header.ack
-        }
-        EM.defer(op, cb)
-      end
+Executor::logger.info "Running #{Executor::settings.threads} worker threads"
+EM.threadpool_size = Executor::settings.threads
 
-      publish_event('executor.ready', hostname: `hostname -f`)
+EM.run do
+  AMQP.connect(ENV['AMQP_URL']) do |connection|
+    Executor::logger.info "Connected to AMQP broker... "
 
-      Signal.trap("INT") {
-        connection.close { EM.stop }
+    channel  = AMQP::Channel.new(connection)
+    channel.prefetch(Executor::settings.threads)
+
+    Executor::events_exchange = channel.topic('hyperflow.events', durable: true)
+    queue                     = channel.queue("hyperflow.jobs",   durable: true)
+
+    queue.subscribe(ack: true) do |header, payload|
+      job_data = RecursiveOpenStruct.new(JSON.parse(payload), recurse_over_arrays: true)
+      job = Job.new(header.correlation_id, job_data)
+      op = -> {
+        begin
+          job.run
+        rescue Exception => e
+          Executor::logger.error "[#{@id}] Error running job: #{e}"
+          {exit_status: -2, exceptions: [e]}
+        end
       }
+      cb = -> (output){
+        channel.default_exchange.publish(JSON.dump(output), content_type: 'application/json', routing_key: header.reply_to, correlation_id: header.correlation_id, mandatory: true)
+        header.ack
+      }
+      EM.defer(op, cb)
     end
+
+    Executor::publish_event('executor.ready', hostname: `hostname -f`)
+
+    Signal.trap("INT") {
+      connection.close { EM.stop }
+    }
   end
 end
