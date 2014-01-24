@@ -8,7 +8,7 @@ require 'logger'
 require_relative 'hyperflow-amqp-executor/helpers'
 require_relative 'hyperflow-amqp-executor/job'
 require_relative 'hyperflow-amqp-executor/local_storage'
-require_relative 'hyperflow-amqp-executor/s3_storage'
+require_relative 'hyperflow-amqp-executor/cloud_storage'
 require_relative 'hyperflow-amqp-executor/nfs_storage'
 
 module Executor

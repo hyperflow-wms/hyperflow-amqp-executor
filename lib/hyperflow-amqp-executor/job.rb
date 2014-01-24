@@ -5,8 +5,8 @@ module Executor
       @id = id
 
       storage_module = case @job.options.storage
-      when 's3'
-        S3Storage
+      when 's3', 'cloud'
+        CloudStorage
       when 'local'
         LocalStorage
       when 'nfs'

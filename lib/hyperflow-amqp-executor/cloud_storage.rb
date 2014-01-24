@@ -1,17 +1,13 @@
 require 'fog'
 
 module Executor
-  module S3Storage
+  module CloudStorage
     def storage_init
-      @s3 = Fog::Storage.new({
-        provider:                 'AWS',
-        aws_access_key_id:        ENV['AWS_ACCESS_KEY_ID'],
-        aws_secret_access_key:    ENV['AWS_SECRET_ACCESS_KEY']
-      })
+      @provider = Fog::Storage.new(@job.options.cloud_storage || Executor::settings.cloud_storage.to_h)
     end
 
     def stage_in
-      @bucket = @s3.directories.get(@job.options.bucket)
+      @bucket = @provider.directories.get(@job.options.bucket)
 
       @job.inputs.each do |file|
         Executor::logger.debug "[#{@id}] Downloading #{file.name}"
