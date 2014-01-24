@@ -5,7 +5,7 @@ require "amqp"
 require "recursive-open-struct"
 require "json"
 
-EventMachine.run do
+EM.run do
   connection = AMQP.connect(ENV['AMQP_URL'])
   warn "Connected to AMQP broker..."
 
@@ -21,5 +21,5 @@ EventMachine.run do
       p data
     end
   end
-  Signal.trap("INT") { connection.close { EventMachine.stop } }
+  Signal.trap("INT") { connection.close { EM.stop } }
 end

@@ -35,7 +35,7 @@ module Executor
       data['timestamp'] = Time.now.utc
       data['type']      = type
       data['worker']    = @id
-      EventMachine::next_tick do 
+      EM.next_tick do 
         @events_exchange.publish(JSON.dump(data), content_type: 'application/json', routing_key: type)
       end
     end

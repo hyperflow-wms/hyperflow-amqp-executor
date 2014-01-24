@@ -4,10 +4,10 @@ require_relative '../lib/hyperflow-amqp-executor'
 
 module Executor
 
-  EventMachine.threadpool_size = thread_count
+  EM.threadpool_size = thread_count
   Executor::id = SecureRandom.uuid
   
-  EventMachine.run do
+  EM.run do
 
   
     connection = AMQP.connect(ENV['AMQP_URL'])
@@ -40,7 +40,7 @@ module Executor
     publish_event('executor.ready', hostname: `hostname -f`)
   
     Signal.trap("INT") {  
-      connection.close { EventMachine.stop } 
+      connection.close { EM.stop } 
     }
   end
 end
