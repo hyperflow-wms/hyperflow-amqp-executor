@@ -1,46 +1,46 @@
 #!/usr/bin/env ruby
-# encoding: utf-8
 require_relative '../lib/hyperflow-amqp-executor'
 
 module Executor
-
   EM.threadpool_size = thread_count
   Executor::id = SecureRandom.uuid
-  
+  Executor::logger.info "Starting worker #{Executor.id}"
+  Executor::logger.info "Running #{thread_count} worker threads"
+
   EM.run do
+    AMQP.connect(ENV['AMQP_URL']) do |connection|
+      Executor::logger.info "Connected to AMQP broker... "
 
-  
-    connection = AMQP.connect(ENV['AMQP_URL'])
-    Executor::logger.info "Connected to AMQP broker... "
-    Executor::logger.info "Running #{thread_count} worker threads"
+      channel  = AMQP::Channel.new(connection)
+      channel.prefetch(thread_count)
 
-    channel  = AMQP::Channel.new(connection)
-    channel.prefetch(thread_count)
+      Executor::events_exchange = channel.topic('hyperflow.events', durable: true)
+      queue                     = channel.queue("hyperflow.jobs",   durable: true)
+      puts "queus init"
+      queue.subscribe(ack: true) do |header, payload|
+        puts "DUPA"
+        job_data = RecursiveOpenStruct.new(JSON.parse(payload), recurse_over_arrays: true)
+        job = Job.new(header.correlation_id, job_data)
+        op = -> {
+          begin
+            job.run
+          rescue Exception => e
+            logger.error "[#{@id}] Error running job: #{e}"
+            {exit_status: -2, exceptions: [e]}
+          end
+        }
+        cb = -> (output){
+          channel.default_exchange.publish(JSON.dump(output), content_type: 'application/json', routing_key: header.reply_to, correlation_id: header.correlation_id, mandatory: true)
+          header.ack
+        }
+        EM.defer(op, cb)
+      end
 
-    Executor::events_exchange = channel.topic('hyperflow.events', durable: true)
-    queue                     = channel.queue("hyperflow.jobs", durable: true)
+      publish_event('executor.ready', hostname: `hostname -f`)
 
-    queue.subscribe(ack: true) do |header, payload|
-      job = RecursiveOpenStruct.new(JSON.parse(payload), recurse_over_arrays: true)
-      op = -> {
-        begin
-          Job.new(S3Storage, header.correlation_id, job).run
-        rescue Exception => e
-          logger.info "[#{@id}] Error running job: #{e}"
-          {exit_status: -2, exceptions: [e]}
-        end
+      Signal.trap("INT") {
+        connection.close { EM.stop }
       }
-      cb = -> (output){
-        channel.default_exchange.publish(JSON.dump(output), content_type: 'application/json', routing_key: header.reply_to, correlation_id: header.correlation_id, mandatory: true)
-        header.ack
-      }
-      EM.defer(op, cb)
     end
-
-    publish_event('executor.ready', hostname: `hostname -f`)
-  
-    Signal.trap("INT") {  
-      connection.close { EM.stop } 
-    }
   end
 end

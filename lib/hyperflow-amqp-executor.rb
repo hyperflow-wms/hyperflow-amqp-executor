@@ -1,4 +1,4 @@
-require "amqp"
+require 'amqp'
 require 'json'
 require 'recursive-open-struct'
 require 'open3'
@@ -9,15 +9,16 @@ require_relative 'hyperflow-amqp-executor/helpers'
 require_relative 'hyperflow-amqp-executor/job'
 require_relative 'hyperflow-amqp-executor/local_storage'
 require_relative 'hyperflow-amqp-executor/s3_storage'
+require_relative 'hyperflow-amqp-executor/nfs_storage'
 
 module Executor
   class << self
-    attr_accessor  :events_exchange, :id
-    
+    attr_accessor :events_exchange, :id
+
     def logger
       @logger ||= Logger.new($stdout)
-    end    
-    
+    end
+
     def thread_count
       unless ENV['THREADS'].nil?
         ENV['THREADS']
@@ -29,13 +30,14 @@ module Executor
         end
       end.to_i
     end
-    
+
     def publish_event(type, payload = {})
       data = payload
       data['timestamp'] = Time.now.utc
       data['type']      = type
       data['worker']    = @id
-      EM.next_tick do 
+      EM.next_tick do
+        logger.debug "Publishing event #{type}"
         @events_exchange.publish(JSON.dump(data), content_type: 'application/json', routing_key: type)
       end
     end

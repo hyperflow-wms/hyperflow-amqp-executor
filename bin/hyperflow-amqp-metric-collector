@@ -6,20 +6,21 @@ require "recursive-open-struct"
 require "json"
 
 EM.run do
-  connection = AMQP.connect(ENV['AMQP_URL'])
-  warn "Connected to AMQP broker..."
+  AMQP.connect(ENV['AMQP_URL']) do |connection|
+    warn "Connected to AMQP broker..."
 
-  channel  = AMQP::Channel.new(connection)
-  queue    = channel.queue("", auto_delete: true, durable: false)
-  queue.bind("hyperflow.events", routing_key: "job.*.finished")
+    channel  = AMQP::Channel.new(connection)
+    queue    = channel.queue("", auto_delete: true, durable: false)
+    queue.bind("hyperflow.events", routing_key: "job.*.finished")
 
-  queue.subscribe do |payload|
-    data = RecursiveOpenStruct.new(JSON.parse(payload))
-    if data.metrics
-      puts [data.worker, data.thread, data.job, data.executable, data.metrics.execution, data.metrics.stage_in, data.metrics.stage_out, data.metrics.input_size, data.metrics.output_size].join("\t")
-    else
-      p data
+    queue.subscribe do |payload|
+      data = RecursiveOpenStruct.new(JSON.parse(payload))
+      if data.metrics
+        puts [data.worker, data.thread, data.job, data.executable, data.metrics.execution, data.metrics.stage_in, data.metrics.stage_out, data.metrics.input_size, data.metrics.output_size].join("\t")
+      else
+        p data
+      end
     end
+    Signal.trap("INT") { connection.close { EM.stop } }
   end
-  Signal.trap("INT") { connection.close { EM.stop } }
 end

@@ -1,9 +1,21 @@
 module Executor
   class Job
-    def initialize(storage_handler, id, job)
+    def initialize(id, job)
       @job = job
       @id = id
-      self.extend(storage_handler)
+
+      storage_module = case @job.options.storage
+      when 's3'
+        S3Storage
+      when 'local'
+        LocalStorage
+      when 'nfs'
+        NFSStorage
+      else
+        raise "Unknown storage #{@job.storage}"
+      end
+
+      self.extend(storage_module)
     end
 
     def run
@@ -53,12 +65,12 @@ module Executor
     def execute
       begin
         cmdline = "#{@job.executable} #{@job.args}"
-        Executor::logger.info "[#{@id}] Executing #{cmdline}"
+        Executor::logger.debug "[#{@id}] Executing #{cmdline}"
         Open3.popen3(cmdline, chdir: @workdir) do |stdin, stdout, stderr, wait_thr|
           {exit_status: wait_thr.value.exitstatus, stderr: stderr.read, stdout: stdout.read} # Should use IO.select!, will break on large stdout/stderr
         end
       rescue Exception => e
-        Executor::logger.info "[#{@id}] Error running job: #{e}"
+        Executor::logger.error "[#{@id}] Error executing job: #{e}"
         {exit_status: -1, exceptions: [e]}
       end
     end
