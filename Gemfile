@@ -4,7 +4,7 @@ source "https://rubygems.org"
 ruby "2.1.0"
 
 gem 'fog'
-gem 'unf'
+gem 'unf' # for AWS fog 
 gem 'recursive-open-struct'
 gem 'amqp'
 
