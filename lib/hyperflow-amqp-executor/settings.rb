@@ -13,6 +13,7 @@ module Executor
     
       def defaults
         {
+          amqp_url: ENV['AMQP_URL'],
           storage: 'cloud',
           threads: Executor::cpu_count,
           cloud_storage: {

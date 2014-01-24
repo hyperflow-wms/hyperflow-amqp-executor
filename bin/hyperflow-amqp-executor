@@ -12,7 +12,7 @@ Executor::logger.info "Running #{Executor::settings.threads} worker threads"
 EM.threadpool_size = Executor::settings.threads
 
 EM.run do
-  AMQP.connect(ENV['AMQP_URL']) do |connection|
+  AMQP.connect(Executor::settings.amqp_url) do |connection|
     Executor::logger.info "Connected to AMQP broker... "
 
     channel  = AMQP::Channel.new(connection)
