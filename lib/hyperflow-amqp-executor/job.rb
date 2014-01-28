@@ -7,7 +7,7 @@ module Executor
       @id = id
       @metrics = {
               timestamps: { },
-              worker: Executor::id
+              executor: Executor::id
             }
 
       storage_module = case @job.options.storage

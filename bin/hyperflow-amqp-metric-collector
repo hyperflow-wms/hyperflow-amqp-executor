@@ -16,7 +16,7 @@ EM.run do
     queue.subscribe do |payload|
       data = RecursiveOpenStruct.new(JSON.parse(payload))
       if data.metrics
-        puts [data.worker, 
+        puts [data.executor, 
               data.thread, 
               data.job, 
               data.executable, 
