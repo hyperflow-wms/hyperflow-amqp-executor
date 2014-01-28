@@ -39,7 +39,7 @@ EM.run do
       EM.defer(op, cb)
     end
 
-    Executor::publish_event('executor.ready', hostname: `hostname -f`)
+    Executor::publish_event('executor.ready', 'executor.ready', hostname: `hostname -f`)
 
     Signal.trap("INT") {
       connection.close { EM.stop }

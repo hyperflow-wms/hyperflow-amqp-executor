@@ -1,8 +1,14 @@
 module Executor
   class Job
+    attr_reader :metrics
+    
     def initialize(id, job)
       @job = job
       @id = id
+      @metrics = {
+              timestamps: { },
+              worker: Executor::id
+            }
 
       storage_module = case @job.options.storage
       when 's3', 'cloud'
@@ -19,9 +25,11 @@ module Executor
     end
 
     def run
-      Executor::publish_event "job.#{@id}.started", job: @id, thread: Thread.current.__id__
+      @metrics[:timestamps]["job.started"] = Executor::publish_event 'job.started', "job.#{@id}.started", job: @id, thread: Thread.current.__id__
+      @metrics[:thread] = Thread.current.__id__
+
       results = {}
-      metrics = {worker: Executor::id, thread: Thread.current.__id__}
+      
       workdir do |tmpdir|
         @workdir = tmpdir
 
@@ -29,36 +37,36 @@ module Executor
 
         if self.respond_to? :stage_in
           publish_events "stage_in" do
-            _ , metrics[:stage_in]     = time { stage_in }
-            metrics[:input_size]       = input_size
-            {bytes: metrics[:input_size], time: metrics[:stage_in]}
+            _ , @metrics[:stage_in]     = time { stage_in }
+            @metrics[:input_size]       = input_size
+            {bytes: @metrics[:input_size], time: @metrics[:stage_in]}
           end
         end
 
         publish_events "execution" do
-          results, metrics[:execution] = time { execute }
-          { executable: @job.executable, exit_status: results[:exit_status], time: metrics[:execution] }
+          results, @metrics[:execution] = time { execute }
+          { executable: @job.executable, exit_status: results[:exit_status], time: @metrics[:execution] }
         end
 
         if self.respond_to? :stage_out
           publish_events "stage_out" do
-            _, metrics[:stage_out]     = time { stage_out }
-            metrics[:output_size]      = input_size
-            { bytes: metrics[:output_size], time: metrics[:stage_out] }
+            _, @metrics[:stage_out]     = time { stage_out }
+            @metrics[:output_size]      = input_size
+            { bytes: @metrics[:output_size], time: @metrics[:stage_out] }
           end
         end
 
       end
-      Executor::publish_event "job.#{@id}.finished", job: @id, executable: @job.executable, exit_status: results[:exit_status], metrics: metrics, thread: Thread.current.__id__
+      @metrics[:timestamps]["job.finished"] = Executor::publish_event 'job.finished', "job.#{@id}.finished", job: @id, executable: @job.executable, exit_status: results[:exit_status], metrics: @metrics, thread: Thread.current.__id__
 
-      results[:metrics] = metrics
+      results[:metrics] = @metrics
       results
     end
 
     def publish_events(name)
-      Executor::publish_event "job.#{@id}.#{name}.started", job: @id, thread: Thread.current.__id__
+      @metrics[:timestamps]["#{name}.started"]  = Executor::publish_event "job.#{name}.started", "job.#{@id}.#{name}.started", job: @id, thread: Thread.current.__id__
       results = yield
-      Executor::publish_event "job.#{@id}.#{name}.finished", {job: @id, thread: Thread.current.__id__}.merge(results || {})
+      @metrics[:timestamps]["#{name}.finished"] = Executor::publish_event "job.#{name}.finished", "job.#{@id}.#{name}.finished", {job: @id, thread: Thread.current.__id__}.merge(results || {})
       results
     end
 

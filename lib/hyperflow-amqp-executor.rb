@@ -32,15 +32,16 @@ module Executor
       end.to_i
     end
 
-    def publish_event(type, payload = {})
+    def publish_event(type, routing_key, payload = {})
       data = payload
-      data['timestamp'] = Time.now.utc
+      data['timestamp'] = Time.now.utc.to_f
       data['type']      = type
       data['worker']    = @id
       EM.next_tick do
         logger.debug "Publishing event #{type}"
-        @events_exchange.publish(JSON.dump(data), content_type: 'application/json', routing_key: type)
+        @events_exchange.publish(JSON.dump(data), content_type: 'application/json', routing_key: routing_key)
       end
+      data['timestamp']
     end
   end
 end
