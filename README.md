@@ -6,7 +6,7 @@ Job executor for [Hyperflow](http://github.com/dice-cyfronet/hyperflow) workflow
 
 Executor may be configured in two ways:
 
- * by using YAML configuration file (see `examples/settings.yml`)
+ * by using YAML configuration file (see `examples/settings.yml`) - path to that file should be passed as only argument
  * via environment variables:
    * `STORAGE` = cloud | nfs | local
    * Cloud storage defaults to AWS S3, for other providers use YAML-based config
@@ -65,23 +65,23 @@ Executor publishes events for monitoring purpose by `hyperflow.events` exchange 
 * `executor.ready`
 * `job.{job-id}.started`
 * `job.{job-id}.finished`
-* `job.{job-id}.stage-in.started`
-* `job.{job-id}.stage-in.finished`
+* `job.{job-id}.stage-in.started` - not applicable for `local` storage
+* `job.{job-id}.stage-in.finished` - not applicable for `local` storage
 * `job.{job-id}.execution.started`
 * `job.{job-id}.execution.finished`
-* `job.{job-id}.stage-out.started`
-* `job.{job-id}.stage-out.finished`
+* `job.{job-id}.stage-out.started` - not applicable for `local` storage
+* `job.{job-id}.stage-out.finished` - not applicable for `local` storage
 
 Each event published in JSON provides:
 
-* UUID executor id
-* Timestamp (in UTC timezone)
-* Event type (see Hyperflow well known events list TODO)
+* `executor`: UUID executor id 
+* `timestamp`: UNIX timestamp (float in UTC timezone)
+* `type`: Like routing key, but without job id part.
 
 Events related to jobs also are provided with:
 
-* Job id (AMQP correlation id)
-* Thread id (random looking number)
+* `id`: Job id (AMQP correlation id)
+* `thread`: Executor thread id (random looking number)
 
 Stage finish events send some additional info: `job.*.stage-in.finished` and `job.*.stage-out.finished` provide `time` and `bytes` for transfer time and data size respectively. The event of `job.*.execution.finished` provides `executable` name, `metrics` and `exit_status`.
 
