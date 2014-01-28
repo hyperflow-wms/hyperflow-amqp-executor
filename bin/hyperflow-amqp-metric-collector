@@ -16,9 +16,26 @@ EM.run do
     queue.subscribe do |payload|
       data = RecursiveOpenStruct.new(JSON.parse(payload))
       if data.metrics
-        puts [data.worker, data.thread, data.job, data.executable, data.metrics.execution, data.metrics.stage_in, data.metrics.stage_out, data.metrics.input_size, data.metrics.output_size].join("\t")
+        puts [data.worker, 
+              data.thread, 
+              data.job, 
+              data.executable, 
+              data.metrics.execution, 
+              data.metrics.stage_in, 
+              data.metrics.stage_out, 
+              data.metrics.input_size, 
+              data.metrics.output_size, 
+              data.metrics.timestamps['job.started'], 
+              data.metrics.timestamps['stage_in.started'], 
+              data.metrics.timestamps['stage_in.finished'],
+              data.metrics.timestamps['execution.started'], 
+              data.metrics.timestamps['execution.finished'],
+              data.metrics.timestamps['stage_out.started'], 
+              data.metrics.timestamps['stage_out.finished'],
+              data.metrics.timestamps['job.finished']
+           ].map {|v| if v.nil? then "NA" else v end }.join("\t")
       else
-        p data
+        warn payload
       end
     end
     Signal.trap("INT") { connection.close { EM.stop } }
