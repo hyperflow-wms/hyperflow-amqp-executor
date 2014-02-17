@@ -5,19 +5,39 @@ require "amqp"
 require "recursive-open-struct"
 require "json"
 
-EventMachine.run do
-  connection = AMQP.connect(ENV['AMQP_URL'])
-  warn "Connected to AMQP broker..."
+EM.run do
+  AMQP.connect(ENV['AMQP_URL']) do |connection|
+    warn "Connected to AMQP broker..."
 
-  channel  = AMQP::Channel.new(connection)
-  queue    = channel.queue("", auto_delete: false, durable: true)
-  exchange = channel.fanout("metrics")
-  queue.bind(exchange)
+    channel  = AMQP::Channel.new(connection)
+    queue    = channel.queue("", auto_delete: true, durable: false)
+    queue.bind("hyperflow.events", routing_key: "job.*.finished")
 
-  queue.subscribe do |payload|
-    data = RecursiveOpenStruct.new(JSON.parse(payload))
-    # warn "Received a message: #{payload}"
-    puts [data.executable, data.metrics.execution, data.metrics.download, data.metrics.upload, data.metrics.input_size, data.metrics.output_size].join("\t")
+    queue.subscribe do |payload|
+      data = RecursiveOpenStruct.new(JSON.parse(payload))
+      if data.metrics
+        puts [data.executor, 
+              data.thread, 
+              data.job, 
+              data.executable, 
+              data.metrics.execution, 
+              data.metrics.stage_in, 
+              data.metrics.stage_out, 
+              data.metrics.input_size, 
+              data.metrics.output_size, 
+              data.metrics.timestamps['job.started'], 
+              data.metrics.timestamps['stage_in.started'], 
+              data.metrics.timestamps['stage_in.finished'],
+              data.metrics.timestamps['execution.started'], 
+              data.metrics.timestamps['execution.finished'],
+              data.metrics.timestamps['stage_out.started'], 
+              data.metrics.timestamps['stage_out.finished'],
+              data.metrics.timestamps['job.finished']
+           ].map {|v| if v.nil? then "NA" else v end }.join("\t")
+      else
+        warn payload
+      end
+    end
+    Signal.trap("INT") { connection.close { EM.stop } }
   end
-  Signal.trap("INT") { connection.close { EventMachine.stop } }
 end

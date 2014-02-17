@@ -1,12 +1,13 @@
 source "https://rubygems.org"
 # Add dependencies required to use your gem here.
 
-ruby "2.1.0"
+#ruby "2.1.0"
 
 gem 'fog'
-gem 'unf'
+gem 'unf' # for AWS fog 
 gem 'recursive-open-struct'
 gem 'amqp'
+gem 'deep_merge'
 
 # Add dependencies to develop your gem here.
 # Include everything needed to run rake, tests, features, etc.

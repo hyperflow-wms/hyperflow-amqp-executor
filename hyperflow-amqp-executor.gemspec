@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Kamil Figiela"]
-  s.date = "2013-12-18"
+  s.date = "2014-01-28"
   s.description = "AMQP job executor for Hyperflow workflow engine (http://github.com/dice-cyfronet/hyperflow)"
   s.email = "kamil.figiela@gmail.com"
   s.executables = ["hyperflow-amqp-executor", "hyperflow-amqp-metric-collector"]
@@ -22,12 +22,20 @@ Gem::Specification.new do |s|
     "Gemfile",
     "Gemfile.lock",
     "LICENSE.txt",
+    "README.md",
     "Rakefile",
     "VERSION",
     "bin/hyperflow-amqp-executor",
     "bin/hyperflow-amqp-metric-collector",
+    "example/settings.yml",
     "hyperflow-amqp-executor.gemspec",
     "lib/hyperflow-amqp-executor.rb",
+    "lib/hyperflow-amqp-executor/cloud_storage.rb",
+    "lib/hyperflow-amqp-executor/helpers.rb",
+    "lib/hyperflow-amqp-executor/job.rb",
+    "lib/hyperflow-amqp-executor/local_storage.rb",
+    "lib/hyperflow-amqp-executor/nfs_storage.rb",
+    "lib/hyperflow-amqp-executor/settings.rb",
     "test/helper.rb",
     "test/test_hyperflow-amqp-executor.rb"
   ]
@@ -42,8 +50,10 @@ Gem::Specification.new do |s|
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
       s.add_runtime_dependency(%q<fog>, [">= 0"])
+      s.add_runtime_dependency(%q<unf>, [">= 0"])
       s.add_runtime_dependency(%q<recursive-open-struct>, [">= 0"])
       s.add_runtime_dependency(%q<amqp>, [">= 0"])
+      s.add_runtime_dependency(%q<deep_merge>, [">= 0"])
       s.add_development_dependency(%q<shoulda>, [">= 0"])
       s.add_development_dependency(%q<rdoc>, ["~> 3.12"])
       s.add_development_dependency(%q<bundler>, ["~> 1.0"])
@@ -51,8 +61,10 @@ Gem::Specification.new do |s|
       s.add_development_dependency(%q<pry>, [">= 0"])
     else
       s.add_dependency(%q<fog>, [">= 0"])
+      s.add_dependency(%q<unf>, [">= 0"])
       s.add_dependency(%q<recursive-open-struct>, [">= 0"])
       s.add_dependency(%q<amqp>, [">= 0"])
+      s.add_dependency(%q<deep_merge>, [">= 0"])
       s.add_dependency(%q<shoulda>, [">= 0"])
       s.add_dependency(%q<rdoc>, ["~> 3.12"])
       s.add_dependency(%q<bundler>, ["~> 1.0"])
@@ -61,8 +73,10 @@ Gem::Specification.new do |s|
     end
   else
     s.add_dependency(%q<fog>, [">= 0"])
+    s.add_dependency(%q<unf>, [">= 0"])
     s.add_dependency(%q<recursive-open-struct>, [">= 0"])
     s.add_dependency(%q<amqp>, [">= 0"])
+    s.add_dependency(%q<deep_merge>, [">= 0"])
     s.add_dependency(%q<shoulda>, [">= 0"])
     s.add_dependency(%q<rdoc>, ["~> 3.12"])
     s.add_dependency(%q<bundler>, ["~> 1.0"])
