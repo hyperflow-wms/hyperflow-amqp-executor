@@ -36,7 +36,7 @@ module Executor
       data = payload
       data['timestamp'] = Time.now.utc.to_f
       data['type']      = type
-      data['worker']    = @id
+      data['executor']  = @id
       EM.next_tick do
         logger.debug "Publishing event #{type}"
         @events_exchange.publish(JSON.dump(data), content_type: 'application/json', routing_key: routing_key)
