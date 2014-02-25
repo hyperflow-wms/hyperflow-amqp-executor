@@ -32,7 +32,7 @@ EM.run do
           {exit_status: -2, exceptions: [e]}
         end
       }
-      cb = -> (output){
+      cb = ->(output){
         channel.default_exchange.publish(JSON.dump(output), content_type: 'application/json', routing_key: header.reply_to, correlation_id: header.correlation_id, mandatory: true)
         header.ack
       }
