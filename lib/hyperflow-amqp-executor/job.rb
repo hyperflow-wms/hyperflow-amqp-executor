@@ -41,6 +41,8 @@ module Executor
             @metrics[:input_size]       = input_size
             {bytes: @metrics[:input_size], time: @metrics[:stage_in]}
           end
+        else
+          @metrics[:input_size] = input_size
         end
 
         publish_events "execution" do
@@ -51,9 +53,11 @@ module Executor
         if self.respond_to? :stage_out
           publish_events "stage_out" do
             _, @metrics[:stage_out]     = time { stage_out }
-            @metrics[:output_size]      = input_size
+            @metrics[:output_size]      = output_size
             { bytes: @metrics[:output_size], time: @metrics[:stage_out] }
           end
+        else
+          @metrics[:output_size] = output_size
         end
 
       end
@@ -84,11 +88,11 @@ module Executor
     end
 
     def input_size
-      @job.inputs.map{ |file| File.size(@workdir+"/"+file.name) }.reduce(:+)
+      @job.inputs.map{ |file| begin File.size(@workdir+"/"+file.name) rescue 0 end }.reduce(:+)
     end
 
     def output_size
-      @job.outputs.map{ |file| File.size(@workdir+"/"+file.name) }.reduce(:+)
+      @job.outputs.map{ |file| begin File.size(@workdir+"/"+file.name) rescue 0 end }.reduce(:+)
     end
   end
 end
