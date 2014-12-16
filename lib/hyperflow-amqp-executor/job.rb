@@ -74,11 +74,18 @@ module Executor
       results
     end
 
+    def cmdline
+       if @job.args.is_a? Array
+         ([@job.executable] + @job.args).map { |e| e.to_s }
+      else
+        "#{@job.executable} #{@job.args}"
+      end
+    end
+
     def execute
       begin
-        cmdline = "#{@job.executable} #{@job.args}"
         Executor::logger.debug "[#{@id}] Executing #{cmdline}"
-        Open3.popen3(cmdline, chdir: @workdir) do |stdin, stdout, stderr, wait_thr|
+        Open3.popen3(*cmdline, chdir: @workdir) do |stdin, stdout, stderr, wait_thr|
           {exit_status: wait_thr.value.exitstatus, stderr: stderr.read, stdout: stdout.read} # Should use IO.select!, will break on large stdout/stderr
         end
       rescue Exception => e
