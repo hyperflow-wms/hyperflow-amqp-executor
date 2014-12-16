@@ -9,7 +9,7 @@ module Executor
               timestamps: { },
               executor: Executor::id
             }
-
+        
       storage_module = case @job.options.storage
       when 's3', 'cloud'
         CloudStorage
@@ -20,7 +20,6 @@ module Executor
       else
         raise "Unknown storage #{@job.storage}"
       end
-
       self.extend(storage_module)
     end
 
@@ -32,6 +31,7 @@ module Executor
       
       workdir do |tmpdir|
         @workdir = tmpdir
+        raise "Couldn't get workdir" unless @workdir
 
         storage_init if self.respond_to? :storage_init
 
@@ -83,16 +83,17 @@ module Executor
         end
       rescue Exception => e
         Executor::logger.error "[#{@id}] Error executing job: #{e}"
+        Executor::logger.debug "[#{@id}] Backtrace\n#{e.backtrace.join("\n")}"
         {exit_status: -1, exceptions: [e]}
       end
     end
 
     def input_size
-      @job.inputs.map{ |file| begin File.size(@workdir+"/"+file.name) rescue 0 end }.reduce(:+)
+      @job.inputs.map{ |file| begin File.size(@workdir+"/"+file.name) rescue 0 end }.reduce(:+) or 0
     end
 
     def output_size
-      @job.outputs.map{ |file| begin File.size(@workdir+"/"+file.name) rescue 0 end }.reduce(:+)
+      @job.outputs.map{ |file| begin File.size(@workdir+"/"+file.name) rescue 0 end }.reduce(:+) or 0
     end
   end
 end

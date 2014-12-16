@@ -28,7 +28,8 @@ EM.run do
         begin
           job.run
         rescue Exception => e
-          Executor::logger.error "[#{@id}] Error running job: #{e}"
+          Executor::logger.error "[#{header.correlation_id}] Error running job: #{e}"
+          Executor::logger.debug "[#{header.correlation_id}] Backtrace\n#{e.backtrace.join("\n")}"
           {exit_status: -2, exceptions: [e]}
         end
       }
