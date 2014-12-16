@@ -100,13 +100,13 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  amqp
+  amqp (~> 1.1)
   bundler (~> 1.0)
-  deep_merge
-  fog
-  jeweler (~> 1.8.7)
+  deep_merge (~> 1.0)
+  fog (~> 1.18)
+  jeweler (~> 1.8)
   pry
   rdoc (~> 3.12)
-  recursive-open-struct
+  recursive-open-struct (~> 0.4)
   shoulda
-  unf
+  unf (~> 0.1)
