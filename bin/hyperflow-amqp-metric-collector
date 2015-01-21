@@ -11,7 +11,7 @@ EM.run do
 
     channel  = AMQP::Channel.new(connection)
     queue    = channel.queue("", auto_delete: true, durable: false)
-    queue.bind("hyperflow.events", routing_key: "job.*.finished")
+    queue.bind("hyperflow.events", routing_key: "#")
 
     queue.subscribe do |payload|
       data = RecursiveOpenStruct.new(JSON.parse(payload))
