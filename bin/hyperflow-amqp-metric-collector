@@ -5,19 +5,25 @@ require "amqp"
 require "recursive-open-struct"
 require "json"
 
+def prettyprint data
+  data.map {|v| if v.nil? then "NA" else v end }.join("\t")
+end
+
 EM.run do
   AMQP.connect(ENV['AMQP_URL']) do |connection|
     warn "Connected to AMQP broker..."
 
     channel  = AMQP::Channel.new(connection)
     queue    = channel.queue("", auto_delete: true, durable: false)
-    queue.bind("hyperflow.events", routing_key: "#")
+    queue.bind("hyperflow.events", routing_key: "executor.ready")
+    queue.bind("hyperflow.events", routing_key: "job.*.finished")
 
     queue.subscribe do |payload|
       data = RecursiveOpenStruct.new(JSON.parse(payload))
       if data.metrics
-        puts [data.executor, 
-              data.thread, 
+        puts prettyprint [data.type,
+              data.executor,
+              data.thread,
               data.job, 
               data.executable, 
               data.metrics.execution, 
@@ -33,7 +39,13 @@ EM.run do
               data.metrics.timestamps['stage_out.started'], 
               data.metrics.timestamps['stage_out.finished'],
               data.metrics.timestamps['job.finished']
-           ].map {|v| if v.nil? then "NA" else v end }.join("\t")
+           ]
+      elsif data.hostname
+        puts prettyprint [data.type,
+                          data.hostname.strip,
+                          data.timestamp,
+                          data.executor
+                         ]
       else
         warn payload
       end
