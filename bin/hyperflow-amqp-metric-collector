@@ -5,7 +5,7 @@ require "amqp"
 require "recursive-open-struct"
 require "json"
 
-def prettyprint data
+def print_column data
   data.map {|v| if v.nil? then "NA" else v end }.join("\t")
 end
 
@@ -21,7 +21,7 @@ EM.run do
     queue.subscribe do |payload|
       data = RecursiveOpenStruct.new(JSON.parse(payload))
       if data.metrics
-        puts prettyprint [data.type,
+        puts print_column [data.type,
               data.executor,
               data.thread,
               data.job, 
@@ -41,7 +41,7 @@ EM.run do
               data.metrics.timestamps['job.finished']
            ]
       elsif data.hostname
-        puts prettyprint [data.type,
+        puts print_column [data.type,
                           data.hostname.strip,
                           data.timestamp,
                           data.executor
