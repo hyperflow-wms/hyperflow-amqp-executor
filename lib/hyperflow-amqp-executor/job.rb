@@ -10,13 +10,15 @@ module Executor
               executor: Executor::id
             }
         
-      storage_module = case @job.options.storage
+      storage_module = case (@job.options.storage or Executor::settings.storage)
       when 's3', 'cloud'
         CloudStorage
       when 'local'
         LocalStorage
       when 'nfs'
         NFSStorage
+      when 'plgdata'
+        PLGDataStorage
       else
         raise "Unknown storage #{@job.storage}"
       end
