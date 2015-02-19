@@ -22,22 +22,27 @@ EM.run do
     queue                     = channel.queue("hyperflow.jobs",   durable: true)
 
     queue.subscribe(ack: true) do |header, payload|
-      job_data = RecursiveOpenStruct.new(JSON.parse(payload), recurse_over_arrays: true)
-      job = Job.new(header.correlation_id, job_data)
-      op = -> {
-        begin
-          job.run
-        rescue Exception => e
-          Executor::logger.error "[#{header.correlation_id}] Error running job: #{e}"
-          Executor::logger.debug "[#{header.correlation_id}] Backtrace\n#{e.backtrace.join("\n")}"
-          {exit_status: -2, exceptions: [e]}
-        end
-      }
-      cb = ->(output){
-        channel.default_exchange.publish(JSON.dump(output), content_type: 'application/json', routing_key: header.reply_to, correlation_id: header.correlation_id, mandatory: true)
+      begin
+        job_data = RecursiveOpenStruct.new(JSON.parse(payload), recurse_over_arrays: true)
+        job = Job.new(header.correlation_id, job_data)
+        op = -> {
+          begin
+            job.run
+          rescue Exception => e
+            Executor::logger.error "[#{header.correlation_id}] Error running job: #{e}"
+            Executor::logger.debug "[#{header.correlation_id}] Backtrace\n#{e.backtrace.join("\n")}"
+            {exit_status: -2, exceptions: [e]}
+          end
+        }
+        cb = ->(output){
+          channel.default_exchange.publish(JSON.dump(output), content_type: 'application/json', routing_key: header.reply_to, correlation_id: header.correlation_id, mandatory: true)
+          header.ack
+        }
+        EM.defer(op, cb)
+      rescue JSON::ParserError
+        Executor::logger.error "[#{header.correlation_id}] Invalid JSON"
         header.ack
-      }
-      EM.defer(op, cb)
+      end
     end
 
     Executor::publish_event('executor.ready', 'executor.ready', hostname: `hostname -f`)
