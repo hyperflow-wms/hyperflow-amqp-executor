@@ -6,7 +6,6 @@ module Executor
     PLGDATA_ENDPOINT = (ENV['PLGDATA_ENDPOINT'] or 'https://data.plgrid.pl')
     def storage_init
       @http_client = HTTPClient.new()
-      @http_client.ssl_config.add_trust_ca("plgdata.pem") # Add cert chain to OpenSSL
       
       raise Exception, "Unable to load proxy certificate" unless File.exists?(Executor::settings.plgdata.proxy)
       @proxy_string = File.read(Executor::settings.plgdata.proxy)
