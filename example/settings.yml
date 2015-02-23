@@ -1,8 +1,9 @@
 # RabbitMQ URL, defaults to ENV['AMQP_URL']
 amqp_url: <%= ENV['AMQP_URL'] %>
 
-# Execution storage scenario: cloud | nfs | local 
-storage: <%= ENV['STORAGE'] || 'cloud' %>
+# Execution storage scenario: cloud | nfs | local | plgdata
+# This setting may be overriden for each task
+storage: <%= ENV['STORAGE'] || 'cloud' %> 
 
 # Number of execution threads (defaults to: ENV['THREADS'], `nprocs` if available or 1)
 threads: <%= Executor::cpu_count %>
@@ -15,4 +16,4 @@ cloud_storage:
   aws_secret_access_key:    <%= ENV['AWS_SECRET_ACCESS_KEY'] %>
 
 plgdata:
-  proxy: <%= File.read(ENV['GRID_PROXY']).inspect %>
+  proxy: <%= ENV['X509_USER_PROXY'] or "./grid_proxy "%>

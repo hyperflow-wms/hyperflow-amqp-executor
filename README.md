@@ -57,6 +57,13 @@ Job options:
 
 * workdir
 
+### plgdata: PL-Grid Data
+
+Behaves like *cloud* storage, but uses [PL-Grid Data](https://data.plgrid.pl) service as a backend. It requires path of user proxy certificate in `$X509_USER_PROXY`.
+
+Each task needs to provide some options:
+
+* prefix – path of working directory on the storage infrastructure (probably something like /people/plgyourlogin/workflowdir)
 
 ## Execution event monitoring
 
