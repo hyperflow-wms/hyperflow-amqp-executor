@@ -1,5 +1,4 @@
 require 'httpclient'
-require 'pry'
 
 module Executor
   module PLGDataStorage
@@ -13,12 +12,12 @@ module Executor
 
     def stage_in
       @job.inputs.each do |file|
-          local_file_name = @workdir+"/"+file.name
-          url = PLGDATA_ENDPOINT+'/download/'+@job.options.prefix+file.name
-          Executor::logger.debug "[#{@id}] Downloading #{url} to #{local_file_name}"
-          payload = {proxy: @proxy_string}
+          url = PLGDATA_ENDPOINT+'/download/' + @job.options.prefix + "/" + file.name
+          local_file_name = @workdir + "/" + file.name
 
+          Executor::logger.debug "[#{@id}] Downloading #{url} to #{local_file_name}"
           File.open(local_file_name, File::RDWR|File::CREAT) do |local_file|
+            payload = {proxy: @proxy_string}
             response = @http_client.get(url, payload) do |chunk|
               local_file.write(chunk)
             end
@@ -29,11 +28,10 @@ module Executor
 
     def stage_out
       @job.outputs.each do |file|
-        url = PLGDATA_ENDPOINT+'/upload/' + @job.options.prefix + File.dirname(file.name)
-
-        Executor::logger.debug "[#{@id}] Uploading #{file.name} to #{url}"
+        url = PLGDATA_ENDPOINT+'/upload/' + @job.options.prefix + "/" + File.dirname(file.name)
         local_file_name = @workdir+"/"+file.name
 
+        Executor::logger.debug "[#{@id}] Uploading #{file.name} to #{url}"
         File.open(local_file_name) do |local_file|
           payload = {proxy: @proxy_string, file: local_file}
           response = @http_client.post(url, payload)
