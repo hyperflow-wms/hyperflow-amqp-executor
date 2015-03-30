@@ -23,6 +23,9 @@ module Executor
           },
           plgdata: {
             proxy: ENV['X509_USER_PROXY']
+          },
+          gridftp: {
+            proxy: ENV['X509_USER_PROXY']
           }
         }
       end

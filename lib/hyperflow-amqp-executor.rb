@@ -11,6 +11,7 @@ require_relative 'hyperflow-amqp-executor/local_storage'
 require_relative 'hyperflow-amqp-executor/cloud_storage'
 require_relative 'hyperflow-amqp-executor/nfs_storage'
 require_relative 'hyperflow-amqp-executor/plgdata_storage'
+require_relative 'hyperflow-amqp-executor/gridftp_storage'
 require_relative 'hyperflow-amqp-executor/settings'
 
 module Executor

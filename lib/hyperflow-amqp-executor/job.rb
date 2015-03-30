@@ -19,6 +19,8 @@ module Executor
         NFSStorage
       when 'plgdata'
         PLGDataStorage
+      when 'gridftp'
+        GridFTPStorage
       else
         raise "Unknown storage #{@job.storage}"
       end
