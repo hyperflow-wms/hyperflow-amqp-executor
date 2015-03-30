@@ -89,9 +89,9 @@ module Executor
     def execute
       begin
         Executor::logger.debug "[#{@id}] Executing #{cmdline}"
-        Open3.popen3(*cmdline, chdir: @workdir) do |stdin, stdout, stderr, wait_thr|
-          {exit_status: wait_thr.value.exitstatus, stderr: stderr.read, stdout: stdout.read} # Should use IO.select!, will break on large stdout/stderr
-        end
+        stdout, stderr, status = Open3.capture3(*cmdline, chdir: @workdir)
+
+        {exit_status: status, stderr: stderr, stdout: stdout}
       rescue Exception => e
         Executor::logger.error "[#{@id}] Error executing job: #{e}"
         Executor::logger.debug "[#{@id}] Backtrace\n#{e.backtrace.join("\n")}"
