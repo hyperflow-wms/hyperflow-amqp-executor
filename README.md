@@ -60,7 +60,7 @@ Job options:
 
 ### plgdata: PL-Grid Data
 
-Behaves like *cloud* storage, but uses [PL-Grid Data](https://data.plgrid.pl) service as a backend. It requires path of user proxy certificate in `$X509_USER_PROXY`.
+Behaves like *cloud* storage, but uses [PL-Grid Data](https://data.plgrid.pl) service as a backend. It requires path of user proxy certificate in `$X509_USER_PROXY`. Does not have any external requirements, however in PLGData file uploads are limited to 256 MiB per file.
 
 Each task needs to provide some options:
 
