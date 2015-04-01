@@ -17,6 +17,8 @@ module Executor
         LocalStorage
       when 'nfs'
         NFSStorage
+      when 'dap'
+        DAPStorage
       else
         raise "Unknown storage #{@job.storage}"
       end

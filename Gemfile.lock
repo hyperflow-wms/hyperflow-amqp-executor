@@ -99,6 +99,7 @@ DEPENDENCIES
   amqp (~> 1.1)
   bundler (~> 1.0)
   deep_merge (~> 1.0)
+  faraday
   fog (~> 1.18)
   jeweler (~> 1.8)
   pry
