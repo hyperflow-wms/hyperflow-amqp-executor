@@ -2,7 +2,7 @@ require 'pry'
 module Executor
   module GridFTPStorage
     def storage_init
-      raise Exception, "Unable to locate user proxy certificate" unless File.exists?(Executor::settings.plgdata.proxy)
+      raise Exception, "Unable to locate user proxy certificate" if Executor::settings.plgdata.proxy.nil? or !File.exists?(Executor::settings.plgdata.proxy)
       @proxy_file = Executor::settings.gridftp.proxy
     end
 
