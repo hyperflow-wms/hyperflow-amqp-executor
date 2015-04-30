@@ -3,6 +3,8 @@ require_relative '../lib/hyperflow-amqp-executor'
 
 include Executor
 
+task_queue_name = (ENV['AMQP_QUEUE'] or "hyperflow.jobs")
+
 Executor::id = SecureRandom.uuid
 Executor::logger.info "Starting worker #{Executor.id}"
 
@@ -19,7 +21,7 @@ EM.run do
     channel.prefetch(Executor::settings.threads)
 
     Executor::events_exchange = channel.topic('hyperflow.events', durable: true)
-    queue                     = channel.queue("hyperflow.jobs",   durable: true)
+    queue = channel.queue(task_queue_name,   durable: true)
 
     queue.subscribe(ack: true) do |header, payload|
       begin
