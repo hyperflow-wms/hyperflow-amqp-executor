@@ -8,13 +8,14 @@ Executor may be configured in two ways:
 
  * by using YAML configuration file (see `examples/settings.yml`) - path to that file should be passed as only argument
  * via environment variables:
-   * `STORAGE` = cloud | nfs | local | plgdata | gridftp
-   * Cloud storage defaults to AWS S3, for other providers use YAML-based config
+   * `STORAGE` = cloud | nfs | local | plgdata | gridftp, defaults to `cloud` (Amazon S3)
    * `AWS_ACCESS_KEY_ID` (for S3 cloud storage)
    * `AWS_SECRET_ACCESS_KEY` (for S3 cloud storage)
-   * `AMQP_URL`
+   * `AMQP_URL` – address of AMQP queue
+   * `AMQP_QUEUE` – name of AMQP queue (defaults to `hyperflow.jobs`)
    * `THREADS` (defaults to number of cores or 1 if it couldn't be determined)
    * `X509_USER_PROXY` – user proxy certificate for PLGData and GridFTP storage
+   * `PLGDATA_ENDPOINT` – endpoint of PLGData service (defaults to: `https://data.plgrid.pl`)
 
 To execute jobs:
   
