@@ -1,4 +1,6 @@
 require 'deep_merge'
+require 'erb'
+
 module Executor
   class Settings
     class << self
