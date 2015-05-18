@@ -1,7 +1,0 @@
-{
-  "executable": "/usr/bin/sort",
-  "args": ["-o", "outfile", "infile"],
-  "inputs": [{"name": "infile"}],
-  "outputs": [{"name": "outfile"}],
-  "options": {"prefix": "/people/plgkfigiela/data/"}
-}
