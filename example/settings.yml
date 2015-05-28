@@ -1,19 +1,20 @@
 # RabbitMQ URL, defaults to ENV['AMQP_URL']
-amqp_url: <%= ENV['AMQP_URL'] %>
+:amqp_url: <%= ENV['AMQP_URL'] %>
 
 # Execution storage scenario: cloud | nfs | local | plgdata
 # This setting may be overriden for each task
-storage: <%= ENV['STORAGE'] || 'cloud' %> 
+:storage: <%= ENV['STORAGE'] || 'cloud' %> 
 
 # Number of execution threads (defaults to: ENV['THREADS'], `nprocs` if available or 1)
-threads: <%= Executor::cpu_count %>
+:threads: <%= Executor::cpu_count %>
 
 # Cloud storage settings, the following hash is passed directyl to Fog::Storage, see http://fog.io/storage/ for further reference
 # Defaults to AWS S3 with credentials passed in ENV
-cloud_storage:
-  provider: AWS
-  aws_access_key_id:        <%= ENV['AWS_ACCESS_KEY_ID'] %>
-  aws_secret_access_key:    <%= ENV['AWS_SECRET_ACCESS_KEY'] %>
+:cloud_storage:
+  :provider: AWS
+  :aws_access_key_id:        <%= ENV['AWS_ACCESS_KEY_ID'] %>
+  :aws_secret_access_key:    <%= ENV['AWS_SECRET_ACCESS_KEY'] %>
+  :region:                   <%= ENV['AWS_REGION'] %>
 
-plgdata:
-  proxy: <%= ENV['X509_USER_PROXY'] or "./grid_proxy "%>
+:plgdata:
+  :proxy: <%= ENV['X509_USER_PROXY'] or "./grid_proxy "%>

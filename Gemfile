@@ -1,9 +1,7 @@
 source "https://rubygems.org"
-# Add dependencies required to use your gem here.
 
-#ruby "2.1.0"
-
-gem 'fog', "~> 1.18"
+gem 'fog', "~> 1.30"
+gem 'fog-aws', "~> 0.2"
 gem 'unf', "~> 0.1" # for AWS fog 
 gem 'recursive-open-struct', "~> 0.4"
 gem 'amqp', "~> 1.1"
