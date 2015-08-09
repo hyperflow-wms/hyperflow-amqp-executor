@@ -25,6 +25,8 @@ module Executor
         raise "Unknown storage #{@job.storage}"
       end
       self.extend(storage_module)
+
+      init_replacements
     end
 
     def run
@@ -88,31 +90,35 @@ module Executor
       results
     end
 
+    def init_replacements
+      replacements_map = ((@job.inputs + @job.outputs).map do |signal|
+        name = signal.name
+        signal.to_h.map do |k, v|
+          val = if v.is_a? Array then v.join(",") else v end
+          ["$#{name}_#{k}", val]
+        end
+      end).flatten(1)
+
+      @replacements = Hash[replacements_map]
+    end
+
     def cmdline
       line = if @job.args.is_a? Array
          ([@job.executable] + @job.args).map { |e| e.to_s }
       else
         "#{@job.executable} #{@job.args}"
       end
+      line.map { |e| e.gsub(/\$[A-Za-z0-9_]+/, @replacements) }
+    end
 
-      replacements_map = ((@job.inputs + @job.outputs).map do |signal|
-        name = signal.name
-        signal.to_h.map do |k, v|
-          val = if v.is_a? Array then v.join(",") else v end
-
-          ["$#{name}_#{k}", val]
-        end
-      end).flatten(1)
-
-      replacements = Hash[replacements_map]
-
-      line.map { |e| e.gsub(/\$[A-Za-z0-9_]+/, replacements) }
+    def env
+      Hash[@job.env.to_h.map{|k,str| [k, str.gsub(/\$[A-Za-z0-9_]+/, @replacements) ] }]
     end
 
     def execute
       begin
-        Executor::logger.debug "[#{@id}] Executing #{cmdline}"
-        stdout, stderr, status = Open3.capture3(*cmdline, chdir: @workdir)
+        Executor::logger.debug "[#{@id}] Executing #{cmdline} with env #{env}"
+        stdout, stderr, status = Open3.capture3(env, *cmdline, chdir: @workdir)
 
         {exit_status: status, stderr: stderr, stdout: stdout}
       rescue Exception => e
