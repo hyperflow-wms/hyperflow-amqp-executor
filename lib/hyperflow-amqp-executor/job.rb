@@ -1,7 +1,7 @@
 module Executor
   class Job
     attr_reader :metrics
-    
+
     def initialize(id, job)
       @job = job
       @id = id
@@ -9,7 +9,7 @@ module Executor
               timestamps: { },
               executor: Executor::id
             }
-        
+
       storage_module = case (@job.options.storage or Executor::settings.storage)
       when 's3', 'cloud'
         CloudStorage
@@ -32,16 +32,22 @@ module Executor
       @metrics[:thread] = Thread.current.__id__
 
       results = {}
-      
+
       workdir do |tmpdir|
         @workdir = tmpdir
         raise "Couldn't get workdir" unless @workdir
 
         storage_init if self.respond_to? :storage_init
 
+        File.write("#{@workdir}/signals.json", {inputs: @job.inputs.map(&:to_h), outputs: @job.outputs.map(&:to_h)}.to_json)
+
         if self.respond_to? :stage_in
           publish_events "stage_in" do
-            _ , @metrics[:stage_in]     = time { stage_in }
+            _ , @metrics[:stage_in]     = time do
+              @job.inputs.each do |input|
+                input.files.split(":").each stage_in unless input.files.nil?
+              end
+            end
             @metrics[:input_size]       = input_size
             {bytes: @metrics[:input_size], time: @metrics[:stage_in]}
           end
@@ -56,7 +62,11 @@ module Executor
 
         if self.respond_to? :stage_out
           publish_events "stage_out" do
-            _, @metrics[:stage_out]     = time { stage_out }
+            _, @metrics[:stage_out]     = time do
+              @job.outputs.each do |output|
+                output.files.split(":").each stage_out unless output.files.nil?
+              end
+            end
             @metrics[:output_size]      = output_size
             { bytes: @metrics[:output_size], time: @metrics[:stage_out] }
           end
@@ -79,11 +89,24 @@ module Executor
     end
 
     def cmdline
-       if @job.args.is_a? Array
+      line = if @job.args.is_a? Array
          ([@job.executable] + @job.args).map { |e| e.to_s }
       else
         "#{@job.executable} #{@job.args}"
       end
+
+      replacements_map = ((@job.inputs + @job.outputs).map do |signal|
+        name = signal.name
+        signal.to_h.map do |k, v|
+          val = if v.is_a? Array then v.join(",") else v end
+
+          ["$#{name}_#{k}", val]
+        end
+      end).flatten(1)
+
+      replacements = Hash[replacements_map]
+
+      line.map { |e| e.gsub(/\$[A-Za-z0-9_]+/, replacements) }
     end
 
     def execute
