@@ -90,12 +90,41 @@ module Executor
       results
     end
 
-    def cmdline
-       if @job.args.is_a? Array
-         ([@job.executable] + @job.args).map { |e| e.to_s }
+    def docker_cmd
+      if defined?(@job.options.container) && @job.options.container != ""
+        case (@job.options.storage or Executor::settings.storage)
+        when 's3', 'cloud'
+          Executor::logger.debug "[#{@id}] defined #{@job.options.container}"
+          ["docker",
+          "run",
+          "-v",
+          "/tmp:/tmp",
+          "-w="+ @workdir,
+          @job.options.container
+          ]
+        when 'local'
+          Executor::logger.debug "[#{@id}] defined #{@job.options.container}"
+          ["docker",
+          "run",
+          "-v",
+          "/var/run/docker.sock:/var/run/docker.sock",
+          "-v",
+          @job.options.workdir+":"+Executor::settings.docker_mount,
+          "-w="+Executor::settings.docker_mount,
+          @job.options.container
+          ]
+        end
       else
-        "#{@job.executable} #{@job.args}"
+        []
       end
+    end
+
+    def cmdline
+      if @job.args.is_a? Array
+       ( docker_cmd + [@job.executable] + @job.args).map { |e| e.to_s }
+     else
+       "#{@job.executable} #{@job.args}"
+     end
     end
 
     def execute

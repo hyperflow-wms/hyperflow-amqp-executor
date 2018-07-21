@@ -15,6 +15,7 @@ module Executor
         {
           amqp_url: ENV['AMQP_URL'],
           storage: 'cloud',
+          docker_mount: '/input',
           threads: Executor::cpu_count,
           cloud_storage: {
             provider: "AWS",
