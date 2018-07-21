@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 # Add dependencies required to use your gem here.
 
-#ruby "2.1.0"
+#ruby "2.5.1"
 
 gem 'fog', "~> 1.18"
 gem 'unf', "~> 0.1" # for AWS fog 
@@ -16,6 +16,6 @@ group :development do
   gem "shoulda", ">= 0"
   gem "rdoc", "~> 3.12"
   gem "bundler", "~> 1.0"
-  gem "jeweler", "~> 1.8"
+  gem "jeweler", ">= 1.8.7"
   gem "pry"
 end
