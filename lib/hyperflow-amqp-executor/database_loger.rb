@@ -75,6 +75,7 @@ module Executor
         end
 
         def log_time_of_stage_change()
+            #Executor::logger.debug Time.now
             if (@subStage =="idle")
                 @stageStartTime=Time.now
             else 
@@ -106,15 +107,15 @@ module Executor
                     execution_time: @stagesTime["execution"] , uploading_time: @stagesTime["stage_out"]},
                     tags:   { wfid: @wfid, hfId: @hfId, workerId: @id , jobId: @jobId, procId: @procId}
                 }
-        
+                #Executor::logger.debug "write to database #{data}"
                 @influxdb.write_point(metric, data)
             end
         end
 
         def log_start_subStage(subStage)
  
-                self.log_time_of_stage_change
-                self.changeSubStage(subStage)
+            self.log_time_of_stage_change
+            self.changeSubStage(subStage)
             
             # self.log_time_of_stage_change
             # self.changeSubStage("downloading")

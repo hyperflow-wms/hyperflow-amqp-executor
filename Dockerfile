@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM krysp89/nfs-docker:latest
 
 # Install Ruby and Rails dependencies
 RUN apt-get update && apt-get install -y \

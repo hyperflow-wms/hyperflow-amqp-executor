@@ -54,6 +54,7 @@ module Executor
             {bytes: @metrics[:input_size], time: @metrics[:stage_in]}
           end
         else
+          @dataLoger.log_start_subStage("stage_in")
           @metrics[:input_size] = input_size
         end
 
@@ -69,6 +70,8 @@ module Executor
             { bytes: @metrics[:output_size], time: @metrics[:stage_out] }
           end
         else
+          @dataLoger.log_start_subStage("stage_out")
+          @dataLoger.log_finish_job()
           @metrics[:output_size] = output_size
         end
 
@@ -103,16 +106,29 @@ module Executor
           @job.options.container
           ]
         when 'local'
-          Executor::logger.debug "[#{@id}] defined #{@job.options.container}"
-          ["docker",
-          "run",
-          "-v",
-          "/var/run/docker.sock:/var/run/docker.sock",
-          "-v",
-          @job.options.workdir+":"+Executor::settings.docker_mount,
-          "-w="+Executor::settings.docker_mount,
-          @job.options.container
-          ]
+          if ENV['NFS_MOUNT'].nil?
+            Executor::logger.debug "[#{@id}] defined #{@job.options.container}"
+            ["docker",
+            "run",
+            "-v",
+            "/var/run/docker.sock:/var/run/docker.sock",
+            "-v",
+            @workdir+":"+Executor::settings.docker_mount,
+            "-w="+Executor::settings.docker_mount,
+            @job.options.container
+            ]
+          else
+            ["docker",
+            "run",
+            "--privileged=true",
+            "-e",
+            "NFS_MOUNT="+ENV['NFS_MOUNT'],
+            "-w="+@workdir,
+            @job.options.container
+            ]
+          end
+        else
+          []
         end
       else
         []
@@ -130,8 +146,13 @@ module Executor
     def execute
       begin
         Executor::logger.debug "[#{@id}] Executing #{cmdline}"
-        stdout, stderr, status = Open3.capture3(*cmdline, chdir: @workdir)
+        if docker_cmd.empty?
+          stdout, stderr, status = Open3.capture3(*cmdline, chdir: @workdir)
+        else
+          stdout, stderr, status = Open3.capture3(*cmdline)
+        end
         {exit_status: status, stderr: stderr, stdout: stdout}
+
       rescue Exception => e
         Executor::logger.error "[#{@id}] Error executing job: #{e}"
         Executor::logger.debug "[#{@id}] Backtrace\n#{e.backtrace.join("\n")}"
