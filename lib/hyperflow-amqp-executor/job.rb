@@ -1,3 +1,6 @@
+
+require_relative 'database_loger'
+
 module Executor
   class Job
     attr_reader :metrics
@@ -5,6 +8,9 @@ module Executor
     def initialize(id, job)
       @job = job
       @id = id
+
+      @dataLoger = DatabaseLoger.new(ENV['INFLUXDB_URL'],Executor::id,@id,@job.options.procId,@job.options.hfId, @job.options.wfid,@job.executable)
+
       @metrics = {
               timestamps: { },
               executor: Executor::id
@@ -30,6 +36,8 @@ module Executor
     def run
       @metrics[:timestamps]["job.started"] = Executor::publish_event 'job.started', "job.#{@id}.started", job: @id, thread: Thread.current.__id__
       @metrics[:thread] = Thread.current.__id__
+
+      @dataLoger.log_start_job()
 
       results = {}
       
@@ -73,8 +81,12 @@ module Executor
 
     def publish_events(name)
       @metrics[:timestamps]["#{name}.started"]  = Executor::publish_event "job.#{name}.started", "job.#{@id}.#{name}.started", job: @id, thread: Thread.current.__id__
+      @dataLoger.log_start_subStage(name)
       results = yield
       @metrics[:timestamps]["#{name}.finished"] = Executor::publish_event "job.#{name}.finished", "job.#{@id}.#{name}.finished", {job: @id, thread: Thread.current.__id__}.merge(results || {})
+      if(name == "stage_out")
+        @dataLoger.log_finish_job()
+      end
       results
     end
 
@@ -90,7 +102,6 @@ module Executor
       begin
         Executor::logger.debug "[#{@id}] Executing #{cmdline}"
         stdout, stderr, status = Open3.capture3(*cmdline, chdir: @workdir)
-
         {exit_status: status, stderr: stderr, stdout: stdout}
       rescue Exception => e
         Executor::logger.error "[#{@id}] Error executing job: #{e}"
