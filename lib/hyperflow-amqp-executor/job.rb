@@ -54,8 +54,9 @@ module Executor
         if self.respond_to? :stage_in
           publish_events "stage_in" do
             _ , @metrics[:stage_in]     = time do
+              
               @job.inputs.each do |input|
-                input.files.split(":").each stage_in unless input.files.nil?
+                stage_in input
               end
             end
             @metrics[:input_size]       = input_size
@@ -75,7 +76,7 @@ module Executor
           publish_events "stage_out" do
             _, @metrics[:stage_out]     = time do
               @job.outputs.each do |output|
-                output.files.split(":").each stage_out unless output.files.nil?
+                stage_out output
               end
             end
             @metrics[:output_size]      = output_size
